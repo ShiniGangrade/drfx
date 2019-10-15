@@ -119,9 +119,13 @@ WSGI_APPLICATION = 'drfx.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'djongo',
-        'NAME': 'dbmongo102',
+        'NAME': 'mongo101',
         # 'CONN_MAX_AGE': 500 # https://docs.djangoproject.com/en/2.1/ref/databases/#persistent-connections
-        # 'HOST': '192.168.99.100'
+        'HOST': '192.168.99.100',
+        'PORT': 27018
+        # 'USER': 'admin',
+        # 'PASSWORD': 'admin123',
+        # 'AUTH_SOURCE': 'analyse_db'drfx/settings.py
     }
 }
 
@@ -172,12 +176,12 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 SITE_ID = 1
 
 JWT_AUTH = {
+    # 'JWT_RESPONSE_PAYLOAD_HANDLER':
+    # #'rest_framework_jwt.utils.jwt_response_payload_handler',
+    # 'users.views.jwt_response_payload_handler',
 
     'JWT_PAYLOAD_HANDLER': 'users.views.jwt_payload_handler',
 
 }
-
-# REST_USE_JWT = True
-
 
 
