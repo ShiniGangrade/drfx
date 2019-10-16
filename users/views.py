@@ -1,17 +1,22 @@
+"""
+todo - check default_dashboard is null/""
+- on creating using api - it saves as null
+
+"""
 import uuid
 from calendar import timegm
 from datetime import datetime
 
 from django.contrib.auth import authenticate, login
 from rest_auth.serializers import LoginSerializer
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, viewsets, mixins
 from rest_framework.response import Response
 from rest_framework_jwt.compat import get_username, get_username_field
 from rest_framework_jwt.settings import api_settings
 
 from .models import CustomUser
-from .serializers import CustomTokenSerializer
-from .serializers import UserSerializer
+from .serializers import CustomUserSerializer, CustomTokenSerializer, CustomRegisterUserSerializer
+
 
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
 
@@ -57,9 +62,25 @@ def jwt_payload_handler(user):
     return payload
 
 
-class UserListView(generics.ListCreateAPIView):
+
+# class CustomUserViewSet(viewsets.ModelViewSet):
+class CustomUserViewSet(mixins.CreateModelMixin,
+                        mixins.RetrieveModelMixin,
+                        mixins.UpdateModelMixin,
+                        mixins.ListModelMixin,
+                        mixins.DestroyModelMixin,
+                        viewsets.GenericViewSet):
     queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
+    # serializer_class = CustomUserSerializer
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get_serializer_class(self):
+        if self.action in ['create']:
+            return CustomRegisterUserSerializer
+        # if self.action in[ 'update' ,'retrieve', 'list']:
+        #     return CustomUserSerializer
+        return CustomUserSerializer
 
 
 class LoginView(generics.CreateAPIView):
@@ -95,3 +116,31 @@ class LoginView(generics.CreateAPIView):
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
+
+
+# class RegisterUser(generics.CreateAPIView):
+#     """
+#     POST auth/register/
+#     """
+#     permission_classes = (permissions.AllowAny,)
+#     serializer_class = CustomRegisterUserSerializer
+#
+#     # def post(self, request, *args, **kwargs):
+#     #     print("view registeruser called")
+#     #     username = request.data.get("username", "")
+#     #     password = request.data.get("password", "")
+#     #     email = request.data.get("email", "")
+#     #     role = request.data.get("role", "user")
+#     #
+#     #     if not username or not password or not email:
+#     #         return Response(
+#     #             data={
+#     #                 "message": "username, password and email is required to register a user"
+#     #             },
+#     #             status=status.HTTP_400_BAD_REQUEST
+#     #         )
+#     #     new_user = CustomUser.objects.create_user(
+#     #         username=username, password=password, email=email, role=role
+#     #     )
+#     #     return Response(status=status.HTTP_201_CREATED)
+#     #
