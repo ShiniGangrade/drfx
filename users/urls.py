@@ -1,14 +1,15 @@
 from django.urls import include, path
 from rest_framework import routers
 
-from users.views import CustomUserViewSet
-from .views import LoginView
+from .views import CustomUserViewSet, RoleViewSet, GrantViewSet, LoginView
 
 router = routers.DefaultRouter()
-router.register(r'', CustomUserViewSet)
+router.register(r'accounts', CustomUserViewSet)
+router.register(r'roles', RoleViewSet)
+router.register(r'grants', GrantViewSet)
 
 urlpatterns = [
+    path('', include(router.urls)),
     path('login/', LoginView.as_view(), name='login'),
     # path('logout/', LoginView.as_view(), name='login'),
-    path('', include(router.urls)),
 ]

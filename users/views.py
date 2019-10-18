@@ -2,6 +2,8 @@
 todo - check default_dashboard is null/""
 - on creating using api - it saves as null
 
+todo - logout
+
 """
 import uuid
 from calendar import timegm
@@ -14,9 +16,9 @@ from rest_framework.response import Response
 from rest_framework_jwt.compat import get_username, get_username_field
 from rest_framework_jwt.settings import api_settings
 
-from .models import CustomUser
-from .serializers import CustomUserSerializer, CustomTokenSerializer, CustomRegisterUserSerializer
-
+from .models import CustomUser, Role, Grant
+from .serializers import CustomUserSerializer, CustomTokenSerializer, CustomRegisterUserSerializer, RoleSerializer, \
+    GrantSerializer
 
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
 
@@ -42,7 +44,9 @@ def jwt_payload_handler(user):
     if hasattr(user, 'default_dashboard'):
         payload['default_dashboard'] = user.default_dashboard
     if hasattr(user, 'dashboards'):
-        payload['dashboards'] = list(user.dashboards.get_queryset().values_list("name", flat=True))
+        payload['dashboards'] = user.dashboards
+    if hasattr(user, 'grants'):
+        payload['grants'] = user.grants
 
     payload[username_field] = username
 
@@ -62,18 +66,15 @@ def jwt_payload_handler(user):
     return payload
 
 
-
-# class CustomUserViewSet(viewsets.ModelViewSet):
 class CustomUserViewSet(mixins.CreateModelMixin,
                         mixins.RetrieveModelMixin,
                         mixins.UpdateModelMixin,
                         mixins.ListModelMixin,
                         mixins.DestroyModelMixin,
                         viewsets.GenericViewSet):
-    queryset = CustomUser.objects.all()
-    # serializer_class = CustomUserSerializer
 
-    permission_classes = (permissions.AllowAny,)
+    queryset = CustomUser.objects.all()
+    permission_classes = (permissions.AllowAny,)  # change
 
     def get_serializer_class(self):
         if self.action in ['create']:
@@ -112,35 +113,16 @@ class LoginView(generics.CreateAPIView):
             serializer.is_valid()
 
             return Response(serializer.data)
-            # return Response(response)
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    permission_classes = (permissions.AllowAny,)  # change
 
 
-# class RegisterUser(generics.CreateAPIView):
-#     """
-#     POST auth/register/
-#     """
-#     permission_classes = (permissions.AllowAny,)
-#     serializer_class = CustomRegisterUserSerializer
-#
-#     # def post(self, request, *args, **kwargs):
-#     #     print("view registeruser called")
-#     #     username = request.data.get("username", "")
-#     #     password = request.data.get("password", "")
-#     #     email = request.data.get("email", "")
-#     #     role = request.data.get("role", "user")
-#     #
-#     #     if not username or not password or not email:
-#     #         return Response(
-#     #             data={
-#     #                 "message": "username, password and email is required to register a user"
-#     #             },
-#     #             status=status.HTTP_400_BAD_REQUEST
-#     #         )
-#     #     new_user = CustomUser.objects.create_user(
-#     #         username=username, password=password, email=email, role=role
-#     #     )
-#     #     return Response(status=status.HTTP_201_CREATED)
-#     #
+class GrantViewSet(viewsets.ModelViewSet):
+    queryset = Grant.objects.all()
+    serializer_class = GrantSerializer
+    permission_classes = (permissions.AllowAny,)  # change

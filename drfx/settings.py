@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'corsheaders',
+
     'rest_framework',
     'rest_framework.authtoken',
     'rest_auth',
@@ -52,11 +54,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.microsoft',
 
-
-
     'api',
-    'users',
-    'dashboard'
+    'users'
 ]
 
 REST_FRAMEWORK = {
@@ -79,6 +78,7 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -119,7 +119,7 @@ WSGI_APPLICATION = 'drfx.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'djongo',
-        'NAME': 'mongo101',
+        'NAME': 'mongo105',
         # 'CONN_MAX_AGE': 500 # https://docs.djangoproject.com/en/2.1/ref/databases/#persistent-connections
         'HOST': '192.168.99.100',
         'PORT': 27018
@@ -176,12 +176,15 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 SITE_ID = 1
 
 JWT_AUTH = {
-    # 'JWT_RESPONSE_PAYLOAD_HANDLER':
-    # #'rest_framework_jwt.utils.jwt_response_payload_handler',
-    # 'users.views.jwt_response_payload_handler',
 
     'JWT_PAYLOAD_HANDLER': 'users.views.jwt_payload_handler',
 
 }
 
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = False
+
+# JWT_AUTH = {
+#     'JWT_AUTH_HEADER_PREFIX': 'Bearer',
+# }
 
