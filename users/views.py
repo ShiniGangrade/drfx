@@ -5,18 +5,12 @@ todo - check default_dashboard is null/""
 todo - logout
 
 """
-import uuid
-from calendar import timegm
-from datetime import datetime
-from django.utils.translation import ugettext_lazy as _
+
 from django.contrib.auth import authenticate, login
-from django.http import HttpResponse
+
 from rest_auth.serializers import LoginSerializer
 from rest_framework import generics, status, permissions, viewsets, mixins
-from rest_framework.generics import GenericAPIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework_jwt.compat import get_username, get_username_field
+
 from rest_framework_jwt.settings import api_settings
 from django.utils.decorators import method_decorator
 from .models import CustomUser, Role, Grant
@@ -26,10 +20,8 @@ from api.serializers import UserJWTTokenSerializer
 
 # from rest_auth.serializers import PasswordChangeSerializer
 from django.views.decorators.debug import sensitive_post_parameters
-from django.shortcuts import render
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+
 from allauth.socialaccount.providers.microsoft.views import MicrosoftGraphOAuth2Adapter
-# from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 from rest_auth.registration.views import SocialLoginView
 from django.http import HttpResponse
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
@@ -113,7 +105,6 @@ class MicrosoftLogin(SocialLoginView):
     callback_url = 'http://localhost:8000/accounts/microsoft/callback/'
 
     def post(self, request, *args, **kwargs):
-        print("MS post login")
         self.request = request
         self.serializer = self.get_serializer(data=self.request.data,
                                               context={'request': request})
@@ -121,8 +112,6 @@ class MicrosoftLogin(SocialLoginView):
 
         self.login()
         r = self.get_response()
-        print(">>> rest_Auth views login 111", r.data['token'])
-        # return self.get_response()
         return Response({'access_token': r.data['token'], "token_type": "Bearer"})
 
 
