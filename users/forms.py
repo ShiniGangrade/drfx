@@ -6,11 +6,11 @@ class CustomUserCreationForm(UserCreationForm):
 
     class Meta(UserCreationForm):
         model = CustomUser
-        exclude = ('dashboards', 'grants')
+        exclude = ('dashboards', 'grants', 'default_dashboard')
 
 
 class CustomUserChangeForm(UserChangeForm):
 
     class Meta:
         model = CustomUser
-        exclude = ('dashboards', 'grants')
+        exclude = ('dashboards', 'grants', 'default_dashboard')

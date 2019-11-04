@@ -8,62 +8,33 @@ todo - logout
 import uuid
 from calendar import timegm
 from datetime import datetime
-
+from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth import authenticate, login
+from django.http import HttpResponse
 from rest_auth.serializers import LoginSerializer
 from rest_framework import generics, status, permissions, viewsets, mixins
+from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_jwt.compat import get_username, get_username_field
 from rest_framework_jwt.settings import api_settings
-
+from django.utils.decorators import method_decorator
 from .models import CustomUser, Role, Grant
-from .serializers import CustomUserSerializer, CustomTokenSerializer, CustomRegisterUserSerializer, RoleSerializer, \
-    GrantSerializer
+from .serializers import CustomUserSerializer, CustomRegisterUserSerializer, RoleSerializer, \
+    GrantSerializer #, PasswordChangeSerializer
+from api.serializers import UserJWTTokenSerializer
 
-jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+# from rest_auth.serializers import PasswordChangeSerializer
+from django.views.decorators.debug import sensitive_post_parameters
+from django.shortcuts import render
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.microsoft.views import MicrosoftGraphOAuth2Adapter
+# from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
+from rest_auth.registration.views import SocialLoginView
+from django.http import HttpResponse
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from rest_framework.response import Response
 
-
-def jwt_payload_handler(user):
-    username_field = get_username_field()
-    username = get_username(user)
-
-    payload = {
-        'user_id': user.pk,
-        'username': username,
-        'firstName': user.first_name,
-        'lastName': user.last_name,
-        'exp': datetime.utcnow() + api_settings.JWT_EXPIRATION_DELTA
-    }
-    if hasattr(user, 'email'):
-        payload['email'] = user.email
-    if isinstance(user.pk, uuid.UUID):
-        payload['user_id'] = str(user.pk)
-
-    if hasattr(user, 'role'):
-        payload['role'] = user.role
-    if hasattr(user, 'default_dashboard'):
-        payload['default_dashboard'] = user.default_dashboard
-    if hasattr(user, 'dashboards'):
-        payload['dashboards'] = user.dashboards
-    if hasattr(user, 'grants'):
-        payload['grants'] = user.grants
-
-    payload[username_field] = username
-
-    # Include original issued at time for a brand new token,
-    # to allow token refresh
-    if api_settings.JWT_ALLOW_REFRESH:
-        payload['orig_iat'] = timegm(
-            datetime.utcnow().utctimetuple()
-        )
-
-    if api_settings.JWT_AUDIENCE is not None:
-        payload['aud'] = api_settings.JWT_AUDIENCE
-
-    if api_settings.JWT_ISSUER is not None:
-        payload['iss'] = api_settings.JWT_ISSUER
-
-    return payload
 
 
 class CustomUserViewSet(mixins.CreateModelMixin,
@@ -74,7 +45,9 @@ class CustomUserViewSet(mixins.CreateModelMixin,
                         viewsets.GenericViewSet):
 
     queryset = CustomUser.objects.all()
-    permission_classes = (permissions.AllowAny,)  # change
+    # # permission_classes = (permissions.AllowAny,)  # change
+    permission_classes = (permissions.IsAuthenticated,)
+    # permission_classes = (permissions.IsAdminUser,)
 
     def get_serializer_class(self):
         if self.action in ['create']:
@@ -104,10 +77,10 @@ class LoginView(generics.CreateAPIView):
             # login saves the user’s ID in the session,
             # using Django’s session framework.
             login(request, user)
-            serializer = CustomTokenSerializer(data={
+            serializer = UserJWTTokenSerializer(data={
                 # using drf jwt utility functions to generate a token
-                "access_token": jwt_encode_handler(
-                    jwt_payload_handler(user)
+                "access_token": api_settings.JWT_ENCODE_HANDLER(
+                    api_settings.JWT_PAYLOAD_HANDLER(user)
                 )
             })
             serializer.is_valid()
@@ -126,3 +99,71 @@ class GrantViewSet(viewsets.ModelViewSet):
     queryset = Grant.objects.all()
     serializer_class = GrantSerializer
     permission_classes = (permissions.AllowAny,)  # change
+
+
+def demo(request):
+    print(">>> demo route", request.user)
+    return HttpResponse("demo route")
+
+
+
+class MicrosoftLogin(SocialLoginView):
+    adapter_class = MicrosoftGraphOAuth2Adapter
+    client_class = OAuth2Client
+    callback_url = 'http://localhost:8000/accounts/microsoft/callback/'
+
+    def post(self, request, *args, **kwargs):
+        print("MS post login")
+        self.request = request
+        self.serializer = self.get_serializer(data=self.request.data,
+                                              context={'request': request})
+        self.serializer.is_valid(raise_exception=True)
+
+        self.login()
+        r = self.get_response()
+        print(">>> rest_Auth views login 111", r.data['token'])
+        # return self.get_response()
+        return Response({'access_token': r.data['token'], "token_type": "Bearer"})
+
+
+
+
+
+
+
+
+
+
+
+
+
+sensitive_post_parameters_m = method_decorator(
+    sensitive_post_parameters(
+        'password', 'old_password', 'new_password1', 'new_password2'
+    )
+)
+
+# class PasswordChangeView(GenericAPIView):
+#     """
+#     Calls Django Auth SetPasswordForm save method.
+#
+#     Accepts the following POST parameters: new_password1, new_password2
+#     Returns the success/fail message.
+#     """
+#     serializer_class = PasswordChangeSerializer
+#     # permission_classes = (permissions.IsAuthenticated,)
+#     permission_classes = (permissions.AllowAny,)
+#
+#     @sensitive_post_parameters_m
+#     def dispatch(self, *args, **kwargs):
+#         return super(PasswordChangeView, self).dispatch(*args, **kwargs)
+#
+#     def post(self, request, *args, **kwargs):
+#         print("in pwd change 1")
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         print("in pwd change 2")
+#         return Response({"detail": _("New password has been saved.")})
+
+

@@ -1,11 +1,31 @@
-""" todo - change fieldname case if needed"""
+""" todo - change fieldname case if needed
+
+for admin to change other users' passwords, use SetPasswordForm
+for al users and admin to change their own passwords - use PasswordChangeForm
+
+"""
 
 from rest_framework import serializers
 from .models import CustomUser, Role, Grant
 
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
+from django.conf import settings
+import json
+
+
+class DashboardSerializer(serializers.Serializer):
+    id = serializers.CharField(required=False)
+    name = serializers.CharField(required=False)
+
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    dashboards = serializers.ListField(child=serializers.CharField(), required=False)
+    """
+    todo - check https://stackoverflow.com/questions/38388233/drf-allow-all-fields-in-get-request-but-restrict-post-to-just-one-field/38448743#38448743
+    """
+    default_dashboard = DashboardSerializer(required=False)
+    # default_dashboard = serializers.DictField(child=DashboardSerializer(), required=False)
+
+    dashboards = DashboardSerializer(many=True, required=False)
     grants = serializers.ListField(child=serializers.CharField(), required=False)
 
     # firstName = serializers.CharField(source='first_name')
@@ -27,34 +47,24 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
 
-        instance.email = validated_data.get('email', instance.email)
-
         password = validated_data.pop('password', None)
         if password:
             instance.set_password(password)
 
-        instance.role = validated_data.get('role', instance.role)
-
-        if 'grants' in validated_data:
-            grants_string = validated_data['grants'][0][1:-1]
-            grants_list = [i[1:-1] for i in grants_string.split(", ")] if grants_string else []
-            instance.grants = grants_list
-
-        instance.default_dashboard = validated_data.get('default_dashboard', instance.default_dashboard)
-
-        if 'dashboards' in validated_data:
-            dashboards_string = validated_data['dashboards'][0][1:-1]
-            dashboards_list = [i[1:-1] for i in dashboards_string.split(", ")] if dashboards_string else []
-            instance.dashboards = dashboards_list
-
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
+
         return instance
 
 
 class CustomRegisterUserSerializer(serializers.ModelSerializer):
 
-    dashboards = serializers.ListField(child=serializers.CharField(), required=False)
+    default_dashboard = DashboardSerializer(required=False)
+    dashboards = DashboardSerializer(many=True, required=False)
+    # dashboards = serializers.ListField(child=serializers.CharField(), required=False)
     grants = serializers.ListField(child=serializers.CharField(), required=False)
+
 
     class Meta:
         model = CustomUser
@@ -69,26 +79,13 @@ class CustomRegisterUserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password')
 
-        grants_string = validated_data.get('grants', '[]')[0][1:-1]
-        grants_list = [i[1:-1] for i in grants_string.split(", ")] if grants_string else []
-        validated_data["grants"] = grants_list
-
         role = validated_data.get('role', '')
         validated_data['role'] = role if role else 'user'
-
-        dashboards_string = validated_data.get('dashboards', '[]')[0][1:-1]
-        dashboards_list = [i[1:-1] for i in dashboards_string.split(", ")] if dashboards_string else []
-        validated_data["dashboards"] = dashboards_list
 
         user = CustomUser(**validated_data)
         user.set_password(password)
         user.save()
         return user
-
-
-class CustomTokenSerializer(serializers.Serializer):
-    access_token = serializers.CharField(max_length=1024)
-    token_type = serializers.CharField(max_length=100, default='Bearer')
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -101,3 +98,51 @@ class GrantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Grant
         fields = '__all__'
+
+# class PasswordChangeSerializer(serializers.Serializer):
+#     old_password = serializers.CharField(max_length=128)
+#     new_password1 = serializers.CharField(max_length=128)
+#     new_password2 = serializers.CharField(max_length=128)
+#
+#     set_password_form_class = SetPasswordForm
+#
+#     def __init__(self, *args, **kwargs):
+#         self.old_password_field_enabled = getattr(
+#             settings, 'OLD_PASSWORD_FIELD_ENABLED', False
+#         )
+#         self.logout_on_password_change = getattr(
+#             settings, 'LOGOUT_ON_PASSWORD_CHANGE', False
+#         )
+#         super(PasswordChangeSerializer, self).__init__(*args, **kwargs)
+#
+#         if not self.old_password_field_enabled:
+#             self.fields.pop('old_password')
+#
+#         self.request = self.context.get('request')
+#         self.user = getattr(self.request, 'user', None)
+#
+#     def validate_old_password(self, value):
+#         invalid_password_conditions = (
+#             self.old_password_field_enabled,
+#             self.user,
+#             not self.user.check_password(value)
+#         )
+#
+#         if all(invalid_password_conditions):
+#             raise serializers.ValidationError('Invalid password')
+#         return value
+#
+#     def validate(self, attrs):
+#         self.set_password_form = self.set_password_form_class(
+#             user=self.user, data=attrs
+#         )
+#
+#         if not self.set_password_form.is_valid():
+#             raise serializers.ValidationError(self.set_password_form.errors)
+#         return attrs
+#
+#     def save(self):
+#         self.set_password_form.save()
+#         if not self.logout_on_password_change:
+#             from django.contrib.auth import update_session_auth_hash
+#             update_session_auth_hash(self.request, self.user)
